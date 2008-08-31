@@ -57,13 +57,12 @@ package org.objectstyle.woproject.ant;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Hashtable;
-import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.FileScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.PropertyHelper;
@@ -201,30 +200,42 @@ public class FrameworkSet extends FileSet {
     setDir(rootFolder);
   }
 
+  protected List<ExternalFolderFramework> getEclipseFrameworks() {
+    try {
+      List<ExternalFolderFramework> frameworks = new LinkedList<ExternalFolderFramework>();
+      List<Node> conEntries = FileUtil.getClasspathEntriesOfKind(getProject().getBaseDir(), "con");
+      for (Node conEntry : conEntries) {
+        Node pathAttribute = conEntry.getAttributes().getNamedItem("path");
+        String path = pathAttribute.getTextContent();
+        if (path != null && path.startsWith("WOFramework/")) {
+          int slashIndex = path.indexOf("/");
+          String frameworkName = path.substring(slashIndex + 1);
+          IFramework framework = this.root.getFrameworkWithName(frameworkName);
+          if (framework instanceof ExternalFolderFramework) {
+            ExternalFolderFramework externalFolderFramework = (ExternalFolderFramework) framework;
+            frameworks.add(externalFolderFramework);
+          }
+        }
+      }
+      return frameworks;
+    }
+    catch (Throwable t) {
+      throw new BuildException("Failed to process eclipse frameworks.", t);
+    }
+  }
+
   @Override
   public synchronized void setupDirectoryScanner(FileScanner ds, Project p) {
     if (this.eclipse && !frameworkIncludesCreated) {
       boolean atLeastOneFrameworkIncluded = false;
       try {
-        List<Node> conEntries = FileUtil.getClasspathEntriesOfKind(getProject().getBaseDir(), "con");
-        for (Node conEntry : conEntries) {
-          Node pathAttribute = conEntry.getAttributes().getNamedItem("path");
-          String path = pathAttribute.getTextContent();
-          if (path != null && path.startsWith("WOFramework/")) {
-            int slashIndex = path.indexOf("/");
-            String frameworkName = path.substring(slashIndex + 1);
-            IFramework framework = this.root.getFrameworkWithName(frameworkName);
-            if (framework instanceof ExternalFolderFramework) {
-              ExternalFolderFramework externalFolderFramework = (ExternalFolderFramework) framework;
-
-              NameEntry frameworkInclude = createInclude();
-              frameworkInclude.setName(externalFolderFramework.getFrameworkFolder().getName());
-              atLeastOneFrameworkIncluded = true;
-            }
-          }
+        List<ExternalFolderFramework> frameworks = getEclipseFrameworks();
+        for (ExternalFolderFramework framework : frameworks) {
+          NameEntry frameworkInclude = createInclude();
+          frameworkInclude.setName(framework.getFrameworkFolder().getName());
         }
 
-        if (!atLeastOneFrameworkIncluded) {
+        if (frameworks.isEmpty()) {
           NameEntry frameworkExclude = createExclude();
           frameworkExclude.setName("**");
         }
@@ -254,22 +265,30 @@ public class FrameworkSet extends FileSet {
   }
 
   protected Path getJarsPath() {
-    Set<String> includedFrameworkNames = new LinkedHashSet<String>();
-    String[] includedFrameworkFolderNames = getDirectoryScanner(getProject()).getIncludedDirectories();
-    for (String includedFrameworkFolderName : includedFrameworkFolderNames) {
-      String frameworkName = ExternalFolderFramework.frameworkNameForFolder(new File(includedFrameworkFolderName));
-      if (frameworkName != null) {
-        includedFrameworkNames.add(frameworkName);
-      }
-      else {
-        System.out.println("FrameworkSet.getJarsPath: ILLEGAL FRAMEWORK NAMED " + frameworkName);
+    List<ExternalFolderFramework> frameworks;
+    if (getEclipse()) {
+      frameworks = getEclipseFrameworks();
+    }
+    else {
+      frameworks = new LinkedList<ExternalFolderFramework>();
+      String[] includedFrameworkFolderNames = getDirectoryScanner(getProject()).getIncludedDirectories();
+      for (String includedFrameworkFolderName : includedFrameworkFolderNames) {
+        String frameworkName = ExternalFolderFramework.frameworkNameForFolder(new File(includedFrameworkFolderName));
+        if (frameworkName != null) {
+          IFramework framework = getFrameworkModel().getFrameworkWithName(frameworkName);
+          if (framework instanceof ExternalFolderFramework) {
+            frameworks.add((ExternalFolderFramework) framework);
+          }
+        }
+        else {
+          System.out.println("FrameworkSet.getJarsPath: ILLEGAL FRAMEWORK NAMED " + frameworkName);
+        }
       }
     }
 
     Path frameworkPath = new Path(getProject());
-    for (String includedFrameworkName : includedFrameworkNames) {
-      IFramework framework = getFrameworkModel().getFrameworkWithName(includedFrameworkName);
-      if (framework != null && framework.getRoot().equals(getFrameworkRoot())) {
+    for (IFramework framework : frameworks) {
+      if (framework.getRoot().equals(getFrameworkRoot())) {
         for (FrameworkLibrary frameworkLibrary : framework.getFrameworkLibraries()) {
           File jarFile = frameworkLibrary.getLibraryFile();
           File deployedJarFile = getDeployedFile(jarFile);
@@ -284,40 +303,92 @@ public class FrameworkSet extends FileSet {
     return frameworkPath;
   }
 
-  public static Path jarsPathForFrameworkSets(Project project, Collection<FrameworkSet> frameworkSets) {
-    Path path = new Path(project);
+  public static Path jarsPathForFrameworkSets(Project project, List<FrameworkSet> frameworkSets, WOVariables variables) {
+    List<AntDependency> unorderedDependencies = new LinkedList<AntDependency>();
     for (FrameworkSet frameworkSet : frameworkSets) {
-      path.append(frameworkSet.getJarsPath());
+      System.out.println("FrameworkSet.jarsPathForFrameworkSets: " + frameworkSet);
+      Path jarsPath = frameworkSet.getJarsPath();
+      System.out.println("FrameworkSet.jarsPathForFrameworkSets:   " + jarsPath);
+      for (String jarPath : jarsPath.list()) {
+        unorderedDependencies.add(new AntDependency(frameworkSet, jarPath, variables));
+      }
     }
+    List<AntDependency> orderedDependencies = new AntDependencyOrdering().orderDependencies(unorderedDependencies);
+
+    Path path = new Path(project);
+    for (AntDependency dependency : orderedDependencies) {
+      String jarPath = dependency.getJarPath();
+      path.append(new Path(project, jarPath));
+    }
+
+    System.out.println("FrameworkSet.jarsPathForFrameworkSets: " + path);
     return path;
   }
 
-  public static String jarsPathForFrameworkSets(Project project, String relativeEmbeddedFrameworksDir, Collection<FrameworkSet> frameworkSets, WOVariables variables) {
-
-    StringBuffer path = new StringBuffer();
+  public static String jarsPathForFrameworkSets(Project project, String relativeEmbeddedFrameworksDir, List<FrameworkSet> frameworkSets, WOVariables variables) {
+    List<AntDependency> unorderedDependencies = new LinkedList<AntDependency>();
     for (FrameworkSet frameworkSet : frameworkSets) {
       Path jarsPath = frameworkSet.getJarsPath();
-      for (String item : jarsPath.list()) {
-        String encodedPath = variables.encodePath(item);
-        if (frameworkSet.getEmbed()) {
-          String prefix = frameworkSet.getDir(project).getAbsolutePath();
-          prefix = variables.encodePath(prefix);
-          if (frameworkSet.hasBundles()) {
-            encodedPath = encodedPath.replaceFirst(".*?(\\w+.framework)", "APPROOT/" + relativeEmbeddedFrameworksDir + "/$1");
-          }
-          else {
-            encodedPath = encodedPath.replaceFirst(prefix, "APPROOT/" + relativeEmbeddedFrameworksDir);
-          }
-        }
-
-        path.append(encodedPath).append(System.getProperty("line.separator"));
+      for (String jarPath : jarsPath.list()) {
+        unorderedDependencies.add(new AntDependency(frameworkSet, jarPath, variables));
       }
     }
+
+    StringBuffer path = new StringBuffer();
+    List<AntDependency> orderedDependencies = new AntDependencyOrdering().orderDependencies(unorderedDependencies);
+    for (AntDependency dependency : orderedDependencies) {
+      String jarPath = dependency.getJarPath();
+      String encodedPath = variables.encodePath(jarPath);
+      FrameworkSet frameworkSet = dependency.getFrameworkSet();
+      if (frameworkSet.getEmbed()) {
+        String prefix = frameworkSet.getDir(project).getAbsolutePath();
+        prefix = variables.encodePath(prefix);
+        if (frameworkSet.hasBundles()) {
+          encodedPath = encodedPath.replaceFirst(".*?(\\w+.framework)", "APPROOT/" + relativeEmbeddedFrameworksDir + "/$1");
+        }
+        else {
+          encodedPath = encodedPath.replaceFirst(prefix, "APPROOT/" + relativeEmbeddedFrameworksDir);
+        }
+      }
+
+      path.append(encodedPath).append(System.getProperty("line.separator"));
+    }
+
+    System.out.println("FrameworkSet.jarsPathForFrameworkSets: " + path);
     return path.toString();
   }
 
   private boolean hasBundles() {
     return hasBundles;
+  }
+
+  @Override
+  public DirectoryScanner getDirectoryScanner(Project p) {
+    if (getDir() == null) {
+      DirectoryScanner scanner = new DirectoryScanner() {
+        @Override
+        public synchronized String[] getIncludedDirectories() {
+          return new String[0];
+        }
+
+        @Override
+        public synchronized int getIncludedDirsCount() {
+          return 0;
+        }
+
+        @Override
+        public synchronized String[] getIncludedFiles() {
+          return new String[0];
+        }
+
+        @Override
+        public synchronized int getIncludedFilesCount() {
+          return 0;
+        }
+      };
+      return scanner;
+    }
+    return super.getDirectoryScanner(p);
   }
 
   private static String replaceProperties(Project project, String value, Hashtable keys) throws BuildException {
@@ -332,7 +403,7 @@ public class FrameworkSet extends FileSet {
     String string = FrameworkSet.replaceProperties(getProject(), ifCondition, getProject().getProperties());
     return getProject().getProperty(string) != null;
   }
-  
+
   @Override
   public String toString() {
     return "[FrameworkSet: root = " + getDir() + "]";

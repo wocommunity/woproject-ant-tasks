@@ -60,6 +60,7 @@ import java.util.List;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.taskdefs.Javac;
+import org.objectstyle.woenvironment.env.WOEnvironment;
 
 /**
  * Customized subclass of Javac used to locate jars in frameworks.
@@ -85,7 +86,7 @@ public class WOCompile extends Javac {
 
   @Override
   public void execute() throws BuildException {
-    setClasspath(FrameworkSet.jarsPathForFrameworkSets(getProject(), frameworkSets));
+    setClasspath(FrameworkSet.jarsPathForFrameworkSets(getProject(), frameworkSets, new WOEnvironment(getProject().getProperties()).getWOVariables()));
     if (dumpClasspath != null) {
       getProject().setProperty(dumpClasspath, getClasspath().toString());
     }

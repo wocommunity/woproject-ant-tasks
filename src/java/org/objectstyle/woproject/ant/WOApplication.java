@@ -83,16 +83,9 @@ import org.objectstyle.woenvironment.env.WOEnvironment;
  * @author Andrei Adamchik
  */
 public class WOApplication extends WOTask {
-
-  private final String[] stdFrameworkNames = new String[] { "JavaWebObjects", "JavaWOExtensions", "JavaEOAccess", "JavaEOControl", "JavaFoundation", "JavaJDBCAdaptor", "JavaXML" };
-
   protected List<FrameworkSet> frameworkSets = new ArrayList<FrameworkSet>();
 
   protected List<OtherClasspathSet> otherClasspathSets = new ArrayList<OtherClasspathSet>();
-
-  protected boolean stdFrameworks = true;
-
-  protected boolean embedStdFrameworks = false;
 
   private WOEnvironment woEnvironment;
 
@@ -361,47 +354,6 @@ public class WOApplication extends WOTask {
   }
 
   /**
-   * Returns a list of standard frameworks as a FrameworkSet.
-   */
-  public FrameworkSet standardSet() {
-    FrameworkSet set = new FrameworkSet();
-    set.setProject(this.getProject());
-    set.setDir(new File(this.getWOEnvironment().getWOVariables().systemRoot()));
-
-    for (int i = 0; i < stdFrameworkNames.length; i++) {
-      String path =
-
-      stdFrameworkNames[i] + ".framework";
-      PatternSet.NameEntry include = set.createInclude();
-      include.setName(path);
-    }
-
-    // Force embedding of the standard frameworks.
-    set.setEmbed(embedStdFrameworks);
-    return set;
-  }
-
-  /**
-   * Sets a flag indicating that standard frameworks, namely JavaWebObjects,
-   * JavaWOExtensions, JavaEOAccess, JavaEOControl, JavaFoundation,
-   * JavaJDBCAdaptor should be automatically referenced in deployed
-   * application.
-   */
-  public void setStdFrameworks(boolean flag) {
-    stdFrameworks = flag;
-  }
-
-  public void setEmbedStdFrameworks(boolean flag) {
-    embedStdFrameworks = flag;
-    // If we request embedding for the standard
-    // frameworks, we certainly want to reference
-    // them.
-    if (flag) {
-      stdFrameworks = true;
-    }
-  }
-
-  /**
    * Returns location where WOApplication is being built up. For WebObjects
    * applications this is a <code>.woa</code> directory.
    */
@@ -535,8 +487,7 @@ public class WOApplication extends WOTask {
     int size = theFrameworkSets.size();
 
     for (int i = 0; i < size; i++) {
-      FrameworkSet fs = (FrameworkSet) theFrameworkSets.get(i);
-
+      FrameworkSet fs = theFrameworkSets.get(i);
       if (fs.getEmbed()) {
         return true;
       }
@@ -555,12 +506,6 @@ public class WOApplication extends WOTask {
   }
 
   public List<FrameworkSet> getFrameworkSets() {
-    if (stdFrameworks) {
-      ArrayList<FrameworkSet> fullList = new ArrayList<FrameworkSet>(frameworkSets.size() + 1);
-      fullList.add(standardSet());
-      fullList.addAll(frameworkSets);
-      return fullList;
-    }
     return frameworkSets;
   }
 
