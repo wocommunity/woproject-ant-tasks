@@ -170,7 +170,7 @@ public class AppFormat extends ProjectFormat {
       buf = new StringBuffer();
 
       // prepend the path with Resources/Java (for CompilerProxy support)
-      buf.append("APPROOT").append(File.separatorChar).append("Resources").append(File.separatorChar).append("Java").append(File.separatorChar).append("\r\n");
+      buf.append("APPROOT").append(File.separatorChar).append("Resources").append(File.separatorChar).append("Java").append(File.separatorChar).append(System.getProperty("line.separator"));
       for (int k = 0; k < 2; k++) {
 
         for (int i = 0; i < files.length; i++) {
@@ -181,7 +181,7 @@ public class AppFormat extends ProjectFormat {
           if (k == 1 && files[i].toString().indexOf("webobjects") < 0) {
             continue;
           }
-          buf.append("APPROOT").append(File.separatorChar).append(files[i]).append("\r\n");
+          buf.append("APPROOT").append(File.separatorChar).append(files[i]).append(System.getProperty("line.separator"));
         }
       }
       return buf.toString();
