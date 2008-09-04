@@ -306,9 +306,7 @@ public class FrameworkSet extends FileSet {
   public static Path jarsPathForFrameworkSets(Project project, List<FrameworkSet> frameworkSets, WOVariables variables) {
     List<AntDependency> unorderedDependencies = new LinkedList<AntDependency>();
     for (FrameworkSet frameworkSet : frameworkSets) {
-      System.out.println("FrameworkSet.jarsPathForFrameworkSets: " + frameworkSet);
       Path jarsPath = frameworkSet.getJarsPath();
-      System.out.println("FrameworkSet.jarsPathForFrameworkSets:   " + jarsPath);
       for (String jarPath : jarsPath.list()) {
         unorderedDependencies.add(new AntDependency(frameworkSet, jarPath, variables));
       }
@@ -321,7 +319,6 @@ public class FrameworkSet extends FileSet {
       path.append(new Path(project, jarPath));
     }
 
-    System.out.println("FrameworkSet.jarsPathForFrameworkSets: " + path);
     return path;
   }
 
