@@ -1,25 +1,21 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="https://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<artifactId>woproject-all-parent</artifactId>
-		<groupId>org.objectstyle.woproject</groupId>
-		<version>5.0.0-SNAPSHOT</version>
-	</parent>
-
-	<groupId>org.objectstyle.woproject.ant</groupId>
+	<groupId>io.github.wocommunity</groupId>
 	<artifactId>woproject-ant-tasks</artifactId>
+	<version>5.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>WOProject Ant Tasks</name>
 	<description>Contains WOProject ant stuff.</description>
-	<url>http://objectstyle.org/woproject/</url>
+	<url>https://wocommunity.org/</url>
 	<inceptionYear>2001</inceptionYear>
 
 	<dependencies>
 		<dependency>
-			<groupId>org.objectstyle.woproject.ant</groupId>
+			<groupId>io.github.wocommunity</groupId>
 			<artifactId>woenvironment</artifactId>
-			<version>${project.version}</version>
+			<version>5.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.ant</groupId>
@@ -62,65 +58,102 @@
 				<directory>src/resources</directory>
 			</resource>
 		</resources>
-		<finalName>${project.artifactId}</finalName>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>
-								../wolips/core/plugins/org.objectstyle.wolips.woproject.ant/lib</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${project.build.directory}</directory>
-									<includes>
-										<include>${project.artifactId}.jar</include>
-									</includes>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-clean-plugin</artifactId>
-				<executions>
-					<execution>
-						<phase>clean</phase>
-						<goals>
-							<goal>clean</goal>
-						</goals>
-						<configuration>
-							<filesets>
-								<fileset>
-									<directory>../wolips/core/plugins/org.objectstyle.wolips.woproject.ant/lib</directory>
-									<useDefaultExcludes>true</useDefaultExcludes>
-									<includes>
-										<include>${project.artifactId}.jar</include>
-									</includes>
-								</fileset>
-							</filesets>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
+		<testSourceDirectory>tests/java</testSourceDirectory>
 	</build>
 
+	<licenses>
+		<license>
+			<name>The ObjectStyle Group Software License, Version 1.0</name>
+			<url>
+				https://github.com/wocommunity/woenvironment/blob/master/license.txt</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Ramsey Gurley</name>
+			<email>ramseygurley@gmail.com</email>
+			<organization>WOCommunity</organization>
+			<organizationUrl>https://github.com/wocommunity/</organizationUrl>
+		</developer>
+	</developers>
+
 	<scm>
-		<connection>scm:svn:http://svn.objectstyle.org/repos/woproject/trunk/woproject/maven2/woproject-ant-tasks</connection>
-		<developerConnection>scm:svn:https://svn.objectstyle.org/repos/woproject/trunk/woproject/maven2/woproject-ant-tasks</developerConnection>
-		<url>http://svn.objectstyle.org/repos/woproject/trunk/woproject/maven2/woproject-ant-tasks</url>
+		<connection>scm:git:git://github.com:wocommunity/woproject-ant-tasks.git</connection>
+		<developerConnection>
+			scm:git:git://github.com:wocommunity/woproject-ant-tasks.git</developerConnection>
+		<url>http://github.com/wocommunity/woproject-ant-tasks/tree/master</url>
 	</scm>
+
+	<profiles>
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>0.4.0</version>
+						<extensions>true</extensions>
+						<configuration>
+							<publishingServerId>central</publishingServerId>
+							<tokenAuth>true</tokenAuth>
+							<autoPublish>true</autoPublish>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>3.3.0</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>3.6.3</version>
+						<executions>
+							<execution>
+								<id>attach-javadoc</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<stylesheet>java</stylesheet>
+							<doclint>none</doclint>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>3.1.0</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<gpgArguments>
+								<arg>--pinentry-mode</arg>
+								<arg>loopback</arg>
+							</gpgArguments>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
